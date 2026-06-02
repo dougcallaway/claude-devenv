@@ -193,6 +193,8 @@ When evolving, show only the diff (changed lines in context). Always explain *wh
 
 Commit `.claude/` alongside `.devcontainer/` — both are project dev environment config. Nothing sensitive belongs in `.claude/settings.json`; API keys go in `remoteEnv` in `devcontainer.json`. Teammates who want personal Claude preferences can layer them via `~/.claude/settings.json`, which merges with the project-level file.
 
+Add `.claude/settings.local.json` to `.gitignore` — Claude Code writes per-user permission grants there, which are session-specific and meaningless to other users.
+
 After writing files, tell the user what to do next:
 1. Open in VS Code → "Reopen in Container" (or rebuild if already in container)
 2. Set `ANTHROPIC_API_KEY` in host shell if using host passthrough, or authenticate via `claude` CLI after first start
