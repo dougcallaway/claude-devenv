@@ -82,6 +82,10 @@ Before generating any files, resolve these:
 #!/usr/bin/env bash
 set -euo pipefail
 
+# -- version pins -- update these lines to upgrade dependencies
+# PANDAS_VERSION="2.1"
+# HTTPX_VERSION="0.27"
+
 echo "==> Fixing volume ownership"
 sudo chown -R vscode:vscode /home/vscode/.claude
 
@@ -89,9 +93,10 @@ echo "==> Installing system tools"
 sudo apt-get update -qq
 sudo apt-get install -y -qq <packages>
 
-echo "==> Installing language packages"
-# pip3 install --break-system-packages ...
-# npm install -g ...
+echo "==> Installing Python packages"
+# pip3 install --break-system-packages \
+#   "pandas~=${PANDAS_VERSION}" \
+#   "httpx~=${HTTPX_VERSION}"
 
 echo "==> postCreate complete"
 ```
@@ -99,7 +104,8 @@ echo "==> postCreate complete"
 Key conventions:
 - `set -euo pipefail` — fail fast on any error; don't silently swallow problems
 - Volume ownership fix **must come first** — the named volume mounts before postCreate runs, but may be owned by root if freshly created
-- Pin versions in `postCreate.sh` as variables at the top (see the wiki example) — makes updates a one-line diff
+- **Version pins at the top as variables** — `~=` (Python) locks MAJOR.MINOR and allows patch updates; `^` (npm) allows minor+patch within a major. Upgrading a dependency is then a one-line diff at the top of the file, not a search through install commands
+- Populate the version-pin block and install commands from the user's requested packages; never leave placeholder comments in the final output
 
 ---
 
