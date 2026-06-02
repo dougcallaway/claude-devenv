@@ -33,12 +33,17 @@ Before generating any files, resolve these:
 
 2. **Language/runtime stack** — Which runtimes does the project need? See [language-stacks.md](references/language-stacks.md) for feature snippets and package lists.
 
-3. **API key strategy** — How should `ANTHROPIC_API_KEY` reach the container? Three options:
-   - **Host passthrough** (recommended for local dev): `"remoteEnv": {"ANTHROPIC_API_KEY": "${localEnv:ANTHROPIC_API_KEY}"}` in devcontainer.json
-   - **Manual post-start**: user runs `claude` and authenticates interactively after first start
-   - **Codespaces / CI secret**: use `"containerEnv"` referencing the secret name
+3. **Authentication method** — Ask whether use is interactive/personal or automated/shared, then choose:
 
-4. **Persistent state** — The `.claude` config directory stores auth, settings, and memory. Always mount it as a named volume so it survives container rebuilds. See the volume pattern below.
+   | Scenario | Method | Setup |
+   |----------|--------|-------|
+   | Personal daily dev (subscription) | OAuth login | Nothing in `devcontainer.json`; user runs `claude` after first start and logs in via browser. Token stored in `~/.claude/`, persists via named volume. |
+   | Team or shared environment | API key | Add `"remoteEnv": {"ANTHROPIC_API_KEY": "${localEnv:ANTHROPIC_API_KEY}"}`. Where the key must be set on the host varies by environment — see [environments.md](references/environments.md). |
+   | CI/CD or automated/agentic workflows | API key | Same as above, or `"containerEnv"` referencing a CI secret. OAuth tokens aren't designed for unattended use. |
+
+   **Cost tradeoff:** OAuth subscription is fixed monthly cost ($20/mo Pro, $100/mo Max) — better for heavy interactive use. API key is pay-per-token — better for variable or automated use, but token costs accumulate quickly in agentic contexts (long context, many tool calls).
+
+4. **Persistent state** — The `.claude` config directory stores auth tokens (OAuth or API key), settings, and memory. Always mount it as a named volume so it survives container rebuilds — this applies equally to OAuth and API key auth. Note: on Codespaces, named volumes are lost when the Codespace is deleted — warn the user they'll need to re-authenticate regardless of auth method. See [environments.md](references/environments.md) for details.
 
 ---
 
@@ -197,5 +202,6 @@ Add `.claude/settings.local.json` to `.gitignore` — Claude Code writes per-use
 
 After writing files, tell the user what to do next:
 1. Open in VS Code → "Reopen in Container" (or rebuild if already in container)
-2. Set `ANTHROPIC_API_KEY` in host shell if using host passthrough, or authenticate via `claude` CLI after first start
+2. **OAuth auth**: run `claude` in the container terminal and complete the browser login
+   **API key auth**: ensure `ANTHROPIC_API_KEY` is set on the host (see [environments.md](references/environments.md) for where to set it per OS)
 3. Verify with `claude --version` in the container terminal
