@@ -86,14 +86,14 @@ set -euo pipefail
 # PANDAS_VERSION="2.1"
 # HTTPX_VERSION="0.27"
 
-echo "==> Fixing volume ownership"
+echo "==> [1/3] Fixing volume ownership"
 sudo chown -R vscode:vscode /home/vscode/.claude
 
-echo "==> Installing system tools"
+echo "==> [2/3] Installing system tools"
 sudo apt-get update -qq
 sudo apt-get install -y -qq <packages>
 
-echo "==> Installing Python packages"
+echo "==> [3/3] Installing Python packages"
 # pip3 install --break-system-packages \
 #   "pandas~=${PANDAS_VERSION}" \
 #   "httpx~=${HTTPX_VERSION}"
