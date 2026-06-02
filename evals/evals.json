@@ -1,0 +1,42 @@
+{
+  "skill_name": "claude-devenv",
+  "evals": [
+    {
+      "id": 0,
+      "prompt": "I'm starting a new Python data analysis project and want Claude Code available in a devcontainer so I can use AI assistance while working. Generate the devcontainer config for me — I need pandas, openpyxl, and httpx available, and I want Claude Code wired up so it's ready to use when the container starts.",
+      "expected_output": "A complete .devcontainer/devcontainer.json and .devcontainer/postCreate.sh that include the claude-code devcontainer feature, a named volume for persisting .claude config, Python feature with the requested packages pinned, and ANTHROPIC_API_KEY passthrough. Should explain key decisions like the volume and key wiring.",
+      "files": [],
+      "assertions": [
+        {"id": "claude_code_feature_present", "description": "devcontainer.json includes the Anthropic claude-code devcontainer feature URI"},
+        {"id": "python_feature_present", "description": "devcontainer.json includes the Python devcontainer feature"},
+        {"id": "named_volume_for_claude", "description": "devcontainer.json mounts /home/vscode/.claude (or equivalent) as a named Docker volume"},
+        {"id": "api_key_wiring", "description": "devcontainer.json wires ANTHROPIC_API_KEY via remoteEnv or containerEnv"},
+        {"id": "ownership_fix_in_postcreate", "description": "postCreate.sh contains chown to fix ownership of the .claude volume directory"},
+        {"id": "required_packages_present", "description": "postCreate.sh installs pandas, openpyxl, and httpx"},
+        {"id": "error_handling", "description": "postCreate.sh uses set -euo pipefail"}
+      ]
+    },
+    {
+      "id": 1,
+      "prompt": "I already have a working Claude devcontainer for my project. It has Python set up. Now I need to add Go to it so I can work on a Go service in the same environment. What changes do I need to make to devcontainer.json and postCreate.sh, and do I need to rebuild?",
+      "expected_output": "Specific diff showing the Go devcontainer feature to add to devcontainer.json, clear explanation that a rebuild is required, and any postCreate.sh changes needed. Should not regenerate the entire config from scratch — just the delta.",
+      "files": [],
+      "assertions": [
+        {"id": "go_feature_uri_correct", "description": "response includes the correct ghcr.io/devcontainers/features/go feature URI"},
+        {"id": "rebuild_required_mentioned", "description": "response explicitly tells user that a container rebuild is required"},
+        {"id": "delta_only", "description": "response gives a focused change (not a full regenerated config) — shows only what to add"}
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I'm not using VS Code devcontainers — my team uses Docker Compose for our dev environment. I want to get Claude Code working in our setup so team members can use it inside the container. How do I do this? We're on Ubuntu 22.04.",
+      "expected_output": "Practical Docker Compose / Dockerfile approach for installing Claude Code (npm install -g or the devcontainer feature install script), how to mount a volume for .claude persistence, and how to pass ANTHROPIC_API_KEY via docker-compose environment. Should acknowledge this is outside the devcontainer feature ecosystem.",
+      "files": [],
+      "assertions": [
+        {"id": "npm_install_claude_code", "description": "response includes npm install -g @anthropic-ai/claude-code"},
+        {"id": "volume_for_dotclaude", "description": "response shows a Docker named volume mount for .claude config persistence"},
+        {"id": "api_key_env_in_compose", "description": "response shows ANTHROPIC_API_KEY in a docker-compose environment section"}
+      ]
+    }
+  ]
+}
