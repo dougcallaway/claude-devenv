@@ -202,6 +202,6 @@ Add `.claude/settings.local.json` to `.gitignore` — Claude Code writes per-use
 
 After writing files, tell the user what to do next:
 1. Open in VS Code → "Reopen in Container" (or rebuild if already in container)
-2. **OAuth auth**: run `claude` in the container terminal and complete the browser login
+2. **OAuth auth**: the Claude Code VS Code extension will prompt you to sign in automatically — complete the browser login from there. This is easier than terminal auth in a devcontainer because the extension runs on the host side and can open a browser natively. Fallback: run `claude` in the container terminal (may require port forwarding or a display to complete the browser step).
    **API key auth**: ensure `ANTHROPIC_API_KEY` is set on the host (see [environments.md](references/environments.md) for where to set it per OS)
 3. Verify with `claude --version` in the container terminal
