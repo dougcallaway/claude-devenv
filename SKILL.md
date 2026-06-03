@@ -27,7 +27,19 @@ Optionally, a `Dockerfile` alongside these if you need to build a custom image.
 
 ## Key Decisions to Make With the User
 
-Before generating any files, resolve these:
+Before generating any files, check whether a project directory exists:
+
+- **Adding to an existing project** — proceed directly to the decisions below.
+- **Starting from an empty project** — tell the user to run this first, then continue:
+  ```bash
+  mkdir <project-name> && cd <project-name>
+  ```
+- **Cloning from a remote repo** — tell the user to clone and enter it first, then continue:
+  ```bash
+  git clone <url> && cd <project-name>
+  ```
+
+Once inside the project directory, resolve these:
 
 1. **Base image** — `mcr.microsoft.com/devcontainers/base:noble` (Ubuntu 24.04) is the safe default. Use `debian`, `alpine`, or a language-specific image if there's a reason.
 
