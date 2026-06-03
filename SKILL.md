@@ -45,6 +45,11 @@ Before generating any files, resolve these:
 
 4. **Persistent state** — The `.claude` config directory stores auth tokens (OAuth or API key), settings, and memory. Always mount it as a named volume so it survives container rebuilds — this applies equally to OAuth and API key auth. Note: on Codespaces, named volumes are lost when the Codespace is deleted — warn the user they'll need to re-authenticate regardless of auth method. See [environments.md](references/environments.md) for details.
 
+5. **Claude skills** — Should any team-shared or third-party Claude skills be pre-installed for every developer? Collect the list and choose an install method for each:
+   - **Git URL** → add to `CLAUDE_SKILL_REPOS` in `postCreate.sh`; cloned into `~/.claude/skills/` on build
+   - **Marketplace plugin** → add to `CLAUDE_SKILL_MARKETPLACES` in `postCreate.sh`; also register the marketplace in `.claude/settings.json` if it isn't the default Anthropic one
+   - **Local path (skill lives in the repo or a sibling directory)** → bind-mount it into the container; see _Adding Claude skills_ under Evolving
+
 ---
 
 ## Scaffolding a New Environment
@@ -91,14 +96,44 @@ set -euo pipefail
 # PANDAS_VERSION="2.1"
 # HTTPX_VERSION="0.27"
 
-echo "==> [1/3] Fixing volume ownership"
+# -- Claude skills: git repos cloned into ~/.claude/skills/ --
+CLAUDE_SKILL_REPOS=(
+  # "https://github.com/org/skill-name"
+)
+
+# -- Claude skills: marketplace plugins --
+# Non-default marketplaces must be registered in .claude/settings.json (extraKnownMarketplaces)
+CLAUDE_SKILL_MARKETPLACES=(
+  # "plugin-name@marketplace-name"
+)
+
+echo "==> [1/N] Fixing volume ownership"
 sudo chown -R vscode:vscode /home/vscode/.claude
 
-echo "==> [2/3] Installing system tools"
+echo "==> [2/N] Installing Claude skill repos"
+if (( ${#CLAUDE_SKILL_REPOS[@]} > 0 )); then
+  mkdir -p /home/vscode/.claude/skills
+  for url in "${CLAUDE_SKILL_REPOS[@]}"; do
+    skill_name=$(basename "$url" .git)
+    target="/home/vscode/.claude/skills/${skill_name}"
+    if [ -d "$target" ]; then
+      git -C "$target" pull --ff-only
+    else
+      git clone --depth 1 "$url" "$target"
+    fi
+  done
+fi
+
+echo "==> [3/N] Installing Claude marketplace skills"
+for plugin in "${CLAUDE_SKILL_MARKETPLACES[@]+"${CLAUDE_SKILL_MARKETPLACES[@]}"}"; do
+  claude plugin install "$plugin" --scope user
+done
+
+echo "==> [4/N] Installing system tools"
 sudo apt-get update -qq
 sudo apt-get install -y -qq <packages>
 
-echo "==> [3/3] Installing Python packages"
+echo "==> [5/N] Installing Python packages"
 # pip3 install --break-system-packages \
 #   "pandas~=${PANDAS_VERSION}" \
 #   "httpx~=${HTTPX_VERSION}"
@@ -158,6 +193,43 @@ When the hook fires, assess whether the dependency is worth baking in:
 
 When suggesting an update to `postCreate.sh`, show only the line to add — not the full file.
 
+### Adding Claude skills
+
+Three install paths depending on where the skill comes from:
+
+**Git URL** — add to `CLAUDE_SKILL_REPOS` in `postCreate.sh`. On every rebuild, the loop clones fresh repos and pulls existing ones (`--ff-only` keeps it safe). Skills land in `~/.claude/skills/` inside the named volume and persist across rebuilds.
+
+**Marketplace plugin** — add to `CLAUDE_SKILL_MARKETPLACES` in `postCreate.sh`. For the default Anthropic marketplace nothing else is needed. For a third-party or team marketplace, also add an `extraKnownMarketplaces` entry to `.claude/settings.json` (committed to the repo so all developers get it):
+
+```json
+{
+  "extraKnownMarketplaces": {
+    "my-team-skills": {
+      "source": { "source": "github", "repo": "my-org/claude-skills" }
+    }
+  }
+}
+```
+
+Then reference it in `postCreate.sh` as `"skill-name@my-team-skills"`.
+
+**Local path (skill lives in the repo or a sibling directory)** — bind-mount the skill directory into the container at the path Claude Code expects. Add a `mounts` entry to `devcontainer.json` alongside the existing named-volume mounts:
+
+```jsonc
+"mounts": [
+  // existing named volumes
+  "source=claude-code-config-${devcontainerId},target=/home/vscode/.claude,type=volume",
+  // bind-mount a skill from within the repo
+  "source=${localWorkspaceFolder}/tools/my-skill,target=/home/vscode/.claude/skills/my-skill,type=bind,readonly",
+  // bind-mount a skill from a sibling directory
+  "source=${localWorkspaceFolder}/../my-skill,target=/home/vscode/.claude/skills/my-skill,type=bind,readonly"
+]
+```
+
+`${localWorkspaceFolder}` is resolved by the devcontainer runtime to the host path of the repo root. Use `readonly` — the container should read skills, not modify them. The bind mount at the more-specific path (`~/.claude/skills/my-skill`) overlays the named volume at that subdirectory, so the rest of `~/.claude` is unaffected.
+
+Note: bind-mounted skills are not cloned or updated by `postCreate.sh` — the host directory is the source of truth. Rebuilding the container picks up whatever is currently on disk on the host.
+
 ### Updating pinned versions
 
 Update the version variables at the top of `postCreate.sh`. Use `~=` (Python) or `^` (npm) to allow patch-level updates while locking the minor.
@@ -169,6 +241,8 @@ Update the version variables at the top of `postCreate.sh`. Use `~=` (Python) or
 | Adding a new language runtime | Rebuild (feature must be in devcontainer.json) |
 | Adding a Python/npm package | Live install to test, then bake into postCreate.sh, rebuild to confirm |
 | Updating a package version | Update postCreate.sh, rebuild |
+| Adding a skill (git URL or marketplace) | Add to postCreate.sh arrays, rebuild |
+| Adding a skill (local path) | Add bind mount to devcontainer.json, rebuild |
 | Changing volume mounts | Rebuild (mounts are set at container creation) |
 | Tweaking VS Code extensions | Rebuild or install from Extensions panel — both work |
 
