@@ -10,7 +10,7 @@
         {"id": "claude_code_feature_present", "description": "devcontainer.json includes the Anthropic claude-code devcontainer feature URI"},
         {"id": "python_feature_present", "description": "devcontainer.json includes the Python devcontainer feature"},
         {"id": "named_volume_for_claude", "description": "devcontainer.json mounts /home/vscode/.claude (or equivalent) as a named Docker volume"},
-        {"id": "api_key_wiring", "description": "devcontainer.json wires ANTHROPIC_API_KEY via remoteEnv or containerEnv"},
+        {"id": "api_key_wiring", "description": "devcontainer.json wires ANTHROPIC_API_KEY via remoteEnv or containerEnv, OR the response explicitly states OAuth was chosen as the auth method and explains why"},
         {"id": "ownership_fix_in_postcreate", "description": "postCreate.sh contains chown to fix ownership of the .claude volume directory"},
         {"id": "required_packages_present", "description": "postCreate.sh installs pandas, openpyxl, and httpx"},
         {"id": "error_handling", "description": "postCreate.sh uses set -euo pipefail"}
@@ -36,6 +36,20 @@
         {"id": "npm_install_claude_code", "description": "response includes npm install -g @anthropic-ai/claude-code"},
         {"id": "volume_for_dotclaude", "description": "response shows a Docker named volume mount for .claude config persistence"},
         {"id": "api_key_env_in_compose", "description": "response shows ANTHROPIC_API_KEY in a docker-compose environment section"}
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "I'm setting up a devcontainer for a project that multiple teammates will clone and use. We share an API key via a team password manager. Set up a Claude-enabled devcontainer with Node.js — make sure the API key gets wired in so everyone can use Claude without having to log in via browser.",
+      "expected_output": "A complete devcontainer.json and postCreate.sh with the claude-code feature, Node.js feature, named volume for .claude, and ANTHROPIC_API_KEY passed via remoteEnv. Should NOT rely on OAuth for this scenario. Should explain where teammates need to set the env var on their host.",
+      "files": [],
+      "assertions": [
+        {"id": "claude_code_feature_present", "description": "devcontainer.json includes the Anthropic claude-code devcontainer feature URI"},
+        {"id": "node_feature_present", "description": "devcontainer.json includes a Node.js devcontainer feature"},
+        {"id": "named_volume_for_claude", "description": "devcontainer.json mounts /home/vscode/.claude (or equivalent) as a named Docker volume"},
+        {"id": "api_key_wiring", "description": "devcontainer.json wires ANTHROPIC_API_KEY via remoteEnv or containerEnv — OAuth must NOT be the recommended auth method for this shared-team scenario"},
+        {"id": "ownership_fix_in_postcreate", "description": "postCreate.sh contains chown to fix ownership of the .claude volume directory"},
+        {"id": "error_handling", "description": "postCreate.sh uses set -euo pipefail"}
       ]
     }
   ]
