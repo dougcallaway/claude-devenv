@@ -65,6 +65,31 @@
         {"id": "explains_volume_gap", "description": "response explains that without committing extraKnownMarketplaces the marketplace registration lives only in the named volume (~/.claude/plugins/known_marketplaces.json) and is lost on a fresh clone/volume"},
         {"id": "merge_not_overwrite", "description": "response merges keys into the existing .claude/settings.json rather than overwriting it"}
       ]
+    },
+    {
+      "id": 5,
+      "prompt": "I just realized I need ripgrep and jq available in my devcontainer. Can you install them and make sure they'll be there after a rebuild?",
+      "expected_output": "Runs apt-get install for ripgrep and jq live, then adds both packages to the apt-get install block in .devcontainer/postCreate.sh. Shows only the added line(s), not the full file. Tells the user the packages are installed now and will persist across rebuilds.",
+      "files": [],
+      "assertions": [
+        {"id": "live_install_run", "description": "response runs or shows running apt-get install (or equivalent) for the packages in the shell, not just editing files"},
+        {"id": "baked_into_postcreate", "description": "response adds ripgrep and jq to the apt-get install block in .devcontainer/postCreate.sh"},
+        {"id": "diff_not_full_file", "description": "response shows only the changed/added lines, not the entire postCreate.sh contents"},
+        {"id": "rebuild_persistence_explained", "description": "response explains that the packages will survive a container rebuild"}
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "Add the example-skills plugin from https://github.com/anthropics/skills.git to our devcontainer setup.",
+      "expected_output": "Writes both extraKnownMarketplaces (registering the marketplace with the correct name anthropic-agent-skills and a github source) and enabledPlugins (example-skills@anthropic-agent-skills: true) into .claude/settings.json. Does NOT run apt-get/pip/npm install — for plugins, settings.json is the install. Tells the user to restart Claude Code to activate the plugin. Shows only the diff.",
+      "files": [],
+      "assertions": [
+        {"id": "extra_known_marketplaces_written", "description": "response writes an extraKnownMarketplaces entry for the marketplace into .claude/settings.json"},
+        {"id": "enabled_plugins_written", "description": "response writes an enabledPlugins entry keyed as example-skills@<marketplace-name> set to true"},
+        {"id": "github_source_used", "description": "the marketplace source uses the github shorthand ({\"source\":\"github\",\"repo\":\"anthropics/skills\"}) rather than the full git URL"},
+        {"id": "no_shell_install_for_plugin", "description": "response does NOT run claude plugin install or any shell install command — for the project-scoped declarative path, settings.json is sufficient"},
+        {"id": "restart_not_rebuild", "description": "response tells the user to restart Claude Code (not rebuild the container) to activate the plugin"}
+      ]
     }
   ]
 }

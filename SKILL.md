@@ -314,10 +314,10 @@ Update the version variables at the top of `postCreate.sh`. Use `~=` (Python) or
 | Situation | Action |
 |-----------|--------|
 | Adding a new language runtime | Rebuild (feature must be in devcontainer.json) |
-| Adding a Python/npm package | Live install to test, then bake into postCreate.sh, rebuild to confirm |
+| Adding an apt/pip/npm package | `/devenv apt\|pip\|npm <package>` — installs live and bakes in one step; rebuild to confirm |
 | Updating a package version | Update postCreate.sh, rebuild |
-| Adding a raw skill (git URL) | Add to `CLAUDE_SKILL_REPOS` in postCreate.sh, rebuild |
-| Adding a plugin (project-scoped) | Add `extraKnownMarketplaces` + `enabledPlugins` to committed `.claude/settings.json` — no rebuild needed |
+| Adding a plugin (project-scoped) | `/devenv plugin <name> <git-url>` — writes `extraKnownMarketplaces` + `enabledPlugins` to `.claude/settings.json`; restart Claude Code to activate |
+| Adding a raw skill (git URL) | `/devenv skill <git-url>` — adds to `CLAUDE_SKILL_REPOS` in postCreate.sh; rebuild to activate |
 | Adding a plugin (user-scoped, marketplace) | Add to `CLAUDE_SKILL_MARKETPLACES` in postCreate.sh, rebuild |
 | Adding a skill (local path) | Add bind mount to devcontainer.json, rebuild |
 | Changing volume mounts | Rebuild (mounts are set at container creation) |
@@ -339,11 +339,28 @@ In all cases, the persistent-volume-for-.claude pattern applies regardless of ru
 
 ## Output
 
-When scaffolding, produce all four files and show them in-context before writing:
+When scaffolding, produce all five files and show them in-context before writing:
 1. `.devcontainer/devcontainer.json`
 2. `.devcontainer/postCreate.sh`
 3. `.claude/hooks/detect-dep-install.sh` (copied from bundled script)
 4. `.claude/settings.json` (hook registration)
+5. `.claude/commands/devenv.md` (the `/devenv` slash command — see below)
+
+### The /devenv command
+
+Include `.claude/commands/devenv.md` in every scaffold. This gives the team a `/devenv <type> <args>` slash command that handles the full live-to-bake loop in one step — installing a dependency live and immediately writing the bake diff to the right config file.
+
+Supported types and what they do:
+
+| Type | Args | Live install | Bake target |
+|------|------|-------------|-------------|
+| `apt` | package name(s) | `sudo apt-get install -y` | `postCreate.sh` apt block |
+| `pip` | package name(s) with optional pins | `pip install` | `postCreate.sh` pip block |
+| `npm` | package name(s) | `npm install -g` | `postCreate.sh` npm block |
+| `plugin` | `<name> <git-url>` | none (settings.json IS the install) | `.claude/settings.json` (`extraKnownMarketplaces` + `enabledPlugins`) |
+| `skill` | `<git-url>` | none (cloned on rebuild) | `postCreate.sh` `CLAUDE_SKILL_REPOS` array |
+
+Copy the command file verbatim from this repo's `.claude/commands/devenv.md` — do not rewrite it.
 
 When evolving, show only the diff (changed lines in context). Always explain *why* each non-obvious config choice was made.
 
