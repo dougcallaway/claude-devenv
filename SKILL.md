@@ -350,7 +350,7 @@ When scaffolding, produce all five files and show them in-context before writing
 
 Include `.claude/commands/devenv.md` in every scaffold. This gives the team a `/devenv <type> <args>` slash command that handles the full live-to-bake loop in one step — installing a dependency live and immediately writing the bake diff to the right config file.
 
-Supported types and what they do:
+The type prefix is optional — the command infers it from the argument shape: version specifiers (`~=`, `==`) → pip; a URL → plugin (if a name precedes it) or skill (URL only); bare word → apt. When genuinely ambiguous it asks. Explicit type always takes precedence.
 
 | Type | Args | Live install | Bake target |
 |------|------|-------------|-------------|
