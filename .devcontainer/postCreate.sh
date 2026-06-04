@@ -29,9 +29,11 @@ if (( ${#CLAUDE_SKILL_REPOS[@]} > 0 )); then
 fi
 
 echo "==> [3/4] Installing Claude marketplace skills"
-for plugin in "${CLAUDE_SKILL_MARKETPLACES[@]+"${CLAUDE_SKILL_MARKETPLACES[@]}"}"; do
-  claude plugin install "$plugin" --scope user
-done
+if (( ${#CLAUDE_SKILL_MARKETPLACES[@]} > 0 )); then
+  for plugin in "${CLAUDE_SKILL_MARKETPLACES[@]}"; do
+    claude plugin install "$plugin" --scope user
+  done
+fi
 
 echo "==> [4/4] Installing system tools"
 sudo apt-get update -qq
