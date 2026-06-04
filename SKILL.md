@@ -64,7 +64,7 @@ Once inside the project directory, resolve these:
 
    Choose an install method for each:
    - **Raw skill, Git URL** → add to `CLAUDE_SKILL_REPOS` in `postCreate.sh`; cloned into `~/.claude/skills/` on build. Raw skills cannot be installed project-scoped — they must land in `~/.claude/skills/`.
-   - **Plugin, marketplace** → run `claude plugin install <name> --scope project` and commit the result; writes plugin metadata into `.claude/` so all developers get it without a postCreate.sh entry. For a non-default marketplace, also add an `extraKnownMarketplaces` entry to `.claude/settings.json`.
+   - **Plugin, marketplace (project-scoped, recommended)** → declare both `extraKnownMarketplaces` (registers the marketplace) and `enabledPlugins` (turns the plugin on) in the committed `.claude/settings.json`. This is fully reproducible from a clean clone with no `postCreate.sh` entry and no dependence on the named volume — see _Adding Claude skills_ under Evolving for the URL→config translation.
    - **Plugin, marketplace (user-scoped)** → add to `CLAUDE_SKILL_MARKETPLACES` in `postCreate.sh`; installs into each developer's `~/.claude/` on build. Use when developers should manage their own copies rather than sharing committed config.
    - **Local path (skill lives in the repo or a sibling directory)** → bind-mount it into `~/.claude/skills/` inside the container; see _Adding Claude skills_ under Evolving
 
@@ -121,7 +121,7 @@ CLAUDE_SKILL_REPOS=(
 )
 
 # -- Claude skills: marketplace plugins --
-# Non-default marketplaces must be registered in .claude/settings.json (extraKnownMarketplaces)
+# The marketplace must first be registered in .claude/settings.json (extraKnownMarketplaces)
 CLAUDE_SKILL_MARKETPLACES=(
   # "plugin-name@marketplace-name"
 )
@@ -255,19 +255,38 @@ Claude Code auto-discovers skills only from `~/.claude/skills/`. There is no pro
 
 **Raw skill, Git URL** — add to `CLAUDE_SKILL_REPOS` in `postCreate.sh`. On every rebuild, the loop clones fresh repos and pulls existing ones (`--ff-only` keeps it safe). Skills land in `~/.claude/skills/` inside the named volume and persist across rebuilds. This is the only path for raw skill files — they cannot be installed project-scoped.
 
-**Plugin, project-scoped** — run `claude plugin install <name> --scope project` once and commit the result to the repo. All developers get the plugin automatically without a `postCreate.sh` entry. For a non-default marketplace, also add an `extraKnownMarketplaces` entry to `.claude/settings.json`:
+**Plugin, project-scoped (recommended)** — declare the plugin in the committed `.claude/settings.json` using two keys. This is the fully reproducible path: a clean clone gets the plugin with no `/plugin` step, no `postCreate.sh` entry, and no dependence on the named volume.
+
+Two keys, two jobs — both are required:
+- `extraKnownMarketplaces` — **registers** the marketplace (the declarative equivalent of `claude plugin marketplace add`).
+- `enabledPlugins` — **enables** a plugin from that marketplace, keyed `"<plugin>@<marketplace>": true`.
+
+Why both: running `claude plugin install <name> --scope project` (or `/plugin`) writes `enabledPlugins` into the project `.claude/settings.json`, but the marketplace *registration* lands only in `~/.claude/plugins/known_marketplaces.json` — inside the named volume, never committed. So the install "works" until someone hits a fresh volume (teammate clone, Codespace, rebuild-without-volume), at which point the marketplace is unknown and the plugin can't resolve. Committing `extraKnownMarketplaces` closes that gap. There are no built-in default marketplaces, so this is required for every marketplace you depend on.
+
+**Translating a user request into config.** When the user says something like _"add skill X from `https://github.com/anthropics/skills.git`"_:
+
+1. **Resolve the real names** — the marketplace name and plugin name are defined in the repo's `.claude-plugin/marketplace.json`, not derivable from the URL (e.g. `anthropics/skills.git` registers as marketplace `anthropic-agent-skills`, not `skills`). Get them by either fetching that manifest, or running `claude plugin marketplace add <url>` then `claude plugin marketplace list` and inspecting the entry.
+2. **Map the URL to a source** — GitHub repos use the shorthand `{ "source": "github", "repo": "<owner>/<name>" }`; any other git host uses `{ "source": "git", "url": "<full-url>" }`.
+3. **Write both keys** into `.claude/settings.json`.
+
+Worked example — _"add example-skills from `https://github.com/anthropics/skills.git`"_ becomes:
 
 ```json
 {
   "extraKnownMarketplaces": {
-    "my-team-skills": {
-      "source": { "source": "github", "repo": "my-org/claude-skills" }
+    "anthropic-agent-skills": {
+      "source": { "source": "github", "repo": "anthropics/skills" }
     }
+  },
+  "enabledPlugins": {
+    "example-skills@anthropic-agent-skills": true
   }
 }
 ```
 
-**Plugin, user-scoped** — add to `CLAUDE_SKILL_MARKETPLACES` in `postCreate.sh`. Installs into each developer's `~/.claude/` on rebuild. For a non-default marketplace, add `extraKnownMarketplaces` to `.claude/settings.json` as above, then reference it in `postCreate.sh` as `"skill-name@my-team-skills"`.
+Merge these keys into any existing `.claude/settings.json` rather than overwriting. The plugin itself is fetched into `~/.claude/plugins/cache/` automatically on first start when Claude Code reconciles `enabledPlugins` against the known marketplace — that fetch is runtime state and is correctly *not* committed.
+
+**Plugin, user-scoped** — add to `CLAUDE_SKILL_MARKETPLACES` in `postCreate.sh`. Installs into each developer's `~/.claude/` on rebuild. The marketplace must still be known first, so add `extraKnownMarketplaces` to `.claude/settings.json` as above, then reference the plugin in `postCreate.sh` as `"<plugin>@<marketplace>"`.
 
 **Local path (skill lives in the repo or a sibling directory)** — bind-mount the skill directory into the container at the path Claude Code expects. Add a `mounts` entry to `devcontainer.json` alongside the existing named-volume mounts:
 
@@ -298,7 +317,7 @@ Update the version variables at the top of `postCreate.sh`. Use `~=` (Python) or
 | Adding a Python/npm package | Live install to test, then bake into postCreate.sh, rebuild to confirm |
 | Updating a package version | Update postCreate.sh, rebuild |
 | Adding a raw skill (git URL) | Add to `CLAUDE_SKILL_REPOS` in postCreate.sh, rebuild |
-| Adding a plugin (project-scoped) | `claude plugin install --scope project`, commit result — no rebuild needed |
+| Adding a plugin (project-scoped) | Add `extraKnownMarketplaces` + `enabledPlugins` to committed `.claude/settings.json` — no rebuild needed |
 | Adding a plugin (user-scoped, marketplace) | Add to `CLAUDE_SKILL_MARKETPLACES` in postCreate.sh, rebuild |
 | Adding a skill (local path) | Add bind mount to devcontainer.json, rebuild |
 | Changing volume mounts | Rebuild (mounts are set at container creation) |

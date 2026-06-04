@@ -51,6 +51,20 @@
         {"id": "ownership_fix_in_postcreate", "description": "postCreate.sh contains chown to fix ownership of the .claude volume directory"},
         {"id": "error_handling", "description": "postCreate.sh uses set -euo pipefail"}
       ]
+    },
+    {
+      "id": 4,
+      "prompt": "My team's devcontainer already has Claude Code working. I want everyone who clones the repo to automatically get the example-skills plugin from https://github.com/anthropics/skills.git — without anyone having to run /plugin manually. How do I make that reproducible?",
+      "expected_output": "Guidance to add BOTH extraKnownMarketplaces (registering the marketplace) and enabledPlugins (enabling the plugin) to the committed .claude/settings.json. Should map the GitHub URL to a github source ({\"source\":\"github\",\"repo\":\"anthropics/skills\"}), use the correct marketplace name (anthropic-agent-skills, not derivable from the URL), key enabledPlugins as example-skills@anthropic-agent-skills, and explain that the marketplace registration otherwise only lives in the named volume and is lost on a fresh clone/volume. Should merge into existing settings.json rather than overwrite, and not require a postCreate.sh entry for this project-scoped path.",
+      "files": [],
+      "assertions": [
+        {"id": "extra_known_marketplaces_present", "description": "response adds an extraKnownMarketplaces entry to .claude/settings.json registering the marketplace"},
+        {"id": "enabled_plugins_present", "description": "response adds an enabledPlugins entry keyed as <plugin>@<marketplace> set to true (e.g. example-skills@anthropic-agent-skills)"},
+        {"id": "github_source_mapping", "description": "the marketplace source maps the GitHub URL to {\"source\":\"github\",\"repo\":\"anthropics/skills\"} (or an equivalent git source with the full URL)"},
+        {"id": "correct_marketplace_name", "description": "response uses the marketplace's actual name (anthropic-agent-skills) rather than inventing one from the URL like 'skills', or explains how to resolve the real name from the marketplace manifest"},
+        {"id": "explains_volume_gap", "description": "response explains that without committing extraKnownMarketplaces the marketplace registration lives only in the named volume (~/.claude/plugins/known_marketplaces.json) and is lost on a fresh clone/volume"},
+        {"id": "merge_not_overwrite", "description": "response merges keys into the existing .claude/settings.json rather than overwriting it"}
+      ]
     }
   ]
 }
